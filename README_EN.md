@@ -10,6 +10,7 @@ Record WAV or PCM voice library on Android, support volume, recording data, reco
 
 ## feature
 
+- Recording data has been modified to increase the volume output of recorded audio
 - Customizable recording parameters (sampling rate, number of bits, single and dual channel)
 - Easy to use, call start to start recording, call stop to stop recording.
 - Support for setting the maximum recording voice duration. It will automatically stop when maximum duration comes.

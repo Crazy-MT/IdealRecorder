@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onRecordData(short[] data, int length) {
+        public void onRecordData(byte[] data, int length) {
 
             for (int i = 0; i < length; i += 60) {
                 waveView.addData(data[i]);
@@ -147,6 +147,7 @@ public class MainActivity extends AppCompatActivity {
                 int action = event.getAction();
                 switch (action) {
                     case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
                         stopRecord();
                         return false;
 
@@ -154,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
         });
-        recordConfig = new IdealRecorder.RecordConfig(MediaRecorder.AudioSource.MIC, 48000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        recordConfig = new IdealRecorder.RecordConfig(MediaRecorder.AudioSource.MIC, 16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
 
     }
 
@@ -178,7 +179,7 @@ public class MainActivity extends AppCompatActivity {
         idealRecorder.setRecordFilePath(getSaveFilePath());
 //        idealRecorder.setWavFormat(false);
         //设置录音配置 最长录音时长 以及音量回调的时间间隔
-        idealRecorder.setRecordConfig(recordConfig).setMaxRecordTime(20000).setVolumeInterval(200);
+        idealRecorder.setRecordConfig(recordConfig).setMaxRecordTime(4000).setVolumeInterval(200);
         //设置录音时各种状态的监听
         idealRecorder.setStatusListener(statusListener);
         idealRecorder.start(); //开始录音

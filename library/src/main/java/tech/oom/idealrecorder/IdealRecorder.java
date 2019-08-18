@@ -239,14 +239,13 @@ public class IdealRecorder implements RecorderCallback, AudioFileListener {
     }
 
     @Override
-    public void onRecorded(final short[] wave) {
+    public void onRecorded(final byte[] wave) {
         count++;
-        final byte[] bytes = BytesTransUtil.getInstance().Shorts2Bytes(wave);
         if (isAudioFileHelperInit) {
 
-            audioFileHelper.save(bytes, 0, bytes.length);
+            audioFileHelper.save(wave, 0, wave.length);
         }
-        byteArrayOutputStream.write(bytes, 0, bytes.length);
+        byteArrayOutputStream.write(wave, 0, wave.length);
         if (statusListener != null) {
             statusListener.onRecordDataOnWorkerThread(wave, wave == null ? 0 : wave.length);
         }
@@ -263,6 +262,8 @@ public class IdealRecorder implements RecorderCallback, AudioFileListener {
         if (recordedTime >= volumeInterval && recordedTime % volumeInterval == 0) {
             onRecorderVolume(calculateVolume(wave));
         }
+
+        android.util.Log.e(TAG, "onRecorded: " + recordedTime + "  " + maxRecordTime);
         if (recordedTime >= maxRecordTime) {
             recorder.stop();
             isStarted.set(false);
@@ -329,7 +330,7 @@ public class IdealRecorder implements RecorderCallback, AudioFileListener {
 //        byteArrayOutputStream.reset();
     }
 
-    private int calculateVolume(short[] wave) {
+    private int calculateVolume(byte[] wave) {
         long v = 0;
         // 将 buffer 内容取出，进行平方和运算
         for (int i = 0; i < wave.length; i++) {

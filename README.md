@@ -10,6 +10,7 @@ an ideal WAV PCM recorder library for Android
 
 ## 特点
 
+- 录音数据有修改，增加录制音频的音量输出
 - 可自定义录音参数（采样率、位数、单双通道、）
 - 调用简单 调用start开始录音，调用stop停止录音
 - 支持设置最大录制语音时长 到达最大时长则会自动停止

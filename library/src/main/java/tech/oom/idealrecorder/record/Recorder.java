@@ -9,15 +9,19 @@ import tech.oom.idealrecorder.utils.Log;
 
 
 public class Recorder {
-    public static final int TIMER_INTERVAL = 20;
+    public static int TIMER_INTERVAL = 100;
     private static final String TAG = "Recorder";
     private IdealRecorder.RecordConfig recordConfig;
     private AudioRecord mAudioRecorder = null;
     private RecorderCallback mCallback;
     private int bufferSize;
+    private int recBufferBytePtr;
+    private int recBufferByteSize;
+    int sampleBytes;
+    int frameByteSize;
     private boolean isRecord = false;
     private Thread mThread = null;
-    private short[] wave;
+    private byte[] recBuffer;
     private Runnable RecordRun = new Runnable() {
 
         public void run() {
@@ -43,18 +47,64 @@ public class Recorder {
                     isRecord = false;
                     break;
                 }
-                mAudioRecorder.read(wave, 0, wave.length);
+                mAudioRecorder.read(recBuffer, 0, recBuffer.length);
             }
             while (isRecord) {
-                int nLen = 0;
+                int reallySampledBytes = 0;
                 try {
-                    nLen = mAudioRecorder.read(wave, 0, wave.length);
+                    reallySampledBytes = mAudioRecorder.read(recBuffer, 0, recBuffer.length);
+
+                    int i = 0;
+                    while ( i < reallySampledBytes ) {
+                        float sample = (float)( recBuffer[recBufferBytePtr+i  ] & 0xFF
+                                | recBuffer[recBufferBytePtr+i+1] << 8 );
+
+                        // THIS is the point were the work is done:
+                        // Increase level by about 6dB:
+                        sample *= 2;
+                        // Or increase level by 20dB:
+                        // sample *= 10;
+                        // Or if you prefer any dB value, then calculate the gain factor outside the loop
+                        // float gainFactor = (float)Math.pow( 10., dB / 20. );    // dB to gain factor
+                        // sample *= gainFactor;
+
+                        // Avoid 16-bit-integer overflow when writing back the manipulated data:
+                        if ( sample >= 32767f ) {
+                            recBuffer[recBufferBytePtr+i  ] = (byte)0xFF;
+                            recBuffer[recBufferBytePtr+i+1] =       0x7F;
+                        } else if ( sample <= -32768f ) {
+                            recBuffer[recBufferBytePtr+i  ] =       0x00;
+                            recBuffer[recBufferBytePtr+i+1] = (byte)0x80;
+                        } else {
+                            int s = (int)( 0.5f + sample );  // Here, dithering would be more appropriate
+                            recBuffer[recBufferBytePtr+i  ] = (byte)(s & 0xFF);
+                            recBuffer[recBufferBytePtr+i+1] = (byte)(s >> 8 & 0xFF);
+                        }
+                        i += 2;
+                    }
+
+                    // Do other stuff like saving the part of buffer to a file
+                    // if ( reallySampledBytes > 0 ) { ... save recBuffer+recBufferBytePtr, length: reallySampledBytes
+
+                    // Then move the recording pointer to the next position in the recording buffer
+                    recBufferBytePtr += reallySampledBytes;
+
+                    // Wrap around at the end of the recording buffer, e.g. like so:
+                    if ( recBufferBytePtr >= recBufferByteSize ) {
+                        recBufferBytePtr = 0;
+                        sampleBytes = frameByteSize;
+                    } else {
+                        sampleBytes = recBufferByteSize - recBufferBytePtr;
+                        if ( sampleBytes > frameByteSize )
+                            sampleBytes = frameByteSize;
+                    }
+
                 } catch (Exception e) {
                     isRecord = false;
                     recordFailed(IdealConst.RecorderErrorCode.RECORDER_EXCEPTION_OCCUR);
                 }
-                if (nLen == wave.length) {
-                    mCallback.onRecorded(wave);
+                if (reallySampledBytes == recBuffer.length) {
+                    mCallback.onRecorded(recBuffer);
                 } else {
                     recordFailed(IdealConst.RecorderErrorCode.RECORDER_READ_ERROR);
                     isRecord = false;
@@ -156,11 +206,12 @@ public class Recorder {
                 int framePeriod = sampleRate * TIMER_INTERVAL / 1000;
                 bufferSize = framePeriod * 2 * bSamples * nChannels / 8;
 
-                wave = new short[framePeriod * bSamples / 8 * nChannels / 2];
+                recBuffer = new byte[framePeriod * bSamples / 8 * nChannels / 2];
                 Log.d(TAG, "buffersize = " + bufferSize);
-                int nMinSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-                if (bufferSize < nMinSize) {
-                    bufferSize = nMinSize;
+                int minRecBufBytes = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+
+                if (bufferSize < minRecBufBytes) {
+                    bufferSize = minRecBufBytes;
 
                     Log.d(TAG, "Increasing buffer size to " + Integer.toString(bufferSize));
                 }
@@ -168,6 +219,17 @@ public class Recorder {
                     unInitializeRecord();
                 }
                 mAudioRecorder = new AudioRecord(audioSource, sampleRate, channelConfig, audioFormat, bufferSize);
+
+                // Setup the recording buffer, size, and pointer (in this case quadruple buffering)
+                recBufferByteSize = minRecBufBytes*2;
+                recBuffer = new byte[recBufferByteSize];
+
+                frameByteSize = minRecBufBytes/2;
+                sampleBytes = frameByteSize;
+                recBufferBytePtr = 0;
+
+                TIMER_INTERVAL = (int) (recBufferByteSize  * 8 / (float)nChannels / (float)bSamples / (float)sampleRate * 1000);
+
                 if (mAudioRecorder.getState() != 1) {
                     mAudioRecorder = null;
                     recordFailed(IdealConst.RecorderErrorCode.RECORDER_PERMISSION_ERROR);

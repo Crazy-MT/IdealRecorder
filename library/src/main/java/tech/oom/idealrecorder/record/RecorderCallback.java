@@ -21,7 +21,7 @@ public abstract interface RecorderCallback {
      *
      * @param wave 录制的数据data
      */
-    public abstract void onRecorded(short[] wave);
+    public abstract void onRecorded(byte[] wave);
 
 
     /**

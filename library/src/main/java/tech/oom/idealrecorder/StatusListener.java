@@ -19,7 +19,7 @@ public class StatusListener {
      * @param data   PCM Data
      * @param length 长度
      */
-    public void onRecordData(short[] data, int length) {
+    public void onRecordData(byte[] data, int length) {
     }
 
     /**
@@ -28,7 +28,7 @@ public class StatusListener {
      * @param data   PCM Data
      * @param length 长度
      */
-    public void onRecordDataOnWorkerThread(short[] data, int length) {
+    public void onRecordDataOnWorkerThread(byte[] data, int length) {
 
     }
 
