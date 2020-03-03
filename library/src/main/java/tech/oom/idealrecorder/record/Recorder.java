@@ -104,7 +104,7 @@ public class Recorder {
                     recordFailed(IdealConst.RecorderErrorCode.RECORDER_EXCEPTION_OCCUR);
                 }
                 if (reallySampledBytes == recBuffer.length) {
-                    mCallback.onRecorded(recBuffer);
+                    mCallback.onRecorded(recBuffer.clone());
                 } else {
                     recordFailed(IdealConst.RecorderErrorCode.RECORDER_READ_ERROR);
                     isRecord = false;
